@@ -34,12 +34,16 @@ var H = canvas.height = window.innerHeight-50;
 
 function sendJSONXMLHTTPRequest(url, objects, callback) {
     var xhr = new XMLHttpRequest();
+    var shouldUpdate;
     xhr.onreadystatechange = function () {
         if (xhr.readyState==4) {
             try {
                 if (xhr.status==200) {
                     //XXX: parse some JSON from the request!
                     //XXX: Pass the data to the callback!
+                    //Source: https://stackoverflow.com/a/8416963
+                    var jsonResponse = JSON.parse(xhr.responseText);
+                    callback(jsonResponse)
                 }
             } 
             catch(e) {
@@ -50,6 +54,12 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
     //XXX: POST to a URL
     //XXX: set the mimetype and the accept headers!
     // Remember to use application/json !
+    //Source: https://stackoverflow.com/a/39519299
+    xhr.open(objects ? 'POST' : 'GET', url, true);
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.setRequestHeader('Content-type', 'application/json');
+
+    xhr.send(JSON.stringify(objects));
 }
 
 
@@ -65,7 +75,9 @@ function drawCircle(context,entity) {
         //moveTo(x,y);
         fillStyle = entity["colour"];
         strokeStyle = fillStyle;
-        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
+        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);
+        //Source: https://www.w3schools.com/tags/canvas_fill.asp
+        context.fill()
         stroke();                                
     }
 }
@@ -135,10 +147,12 @@ function getPosition(e) {
 
 
 function addEntity(entity, data) {
-    world[entity] = data;
-    drawNextFrame(); // (but should we?)
-    //XXX: Send a XHTML Request that updates the entity you just  modified!
 
+    world[entity] = data;
+
+    //XXX: Send a XHTML Request that updates the entity you just modified!
+    drawNextFrame();
+    sendJSONXMLHTTPRequest('/entity/' + entity, data, () => {})
 }
 
 var counter = 0;
@@ -246,16 +260,17 @@ mouse = (function() {
 
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
+//Source: https://canvasjs.com/docs/charts/chart-options/colorset/ Took these colours, thought they looked pretty cool
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'#90EE90', radius:30});
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'#2E8B57', radius:30});
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
+    addEntityWithoutName({'x':x,'y':y,'colour':'#008080',
                           'radius':10});
 });
 
@@ -263,6 +278,9 @@ mouse.mousedraggers.push(function(x,y,clicked,e) {
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
     drawFrame();
+    sendJSONXMLHTTPRequest('/world', false, (newWorld) => {
+        world = newWorld
+    })
 }
 
 // 30 frames per second
