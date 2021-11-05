@@ -33,6 +33,7 @@ app.debug = True
 #    'b':{'x':2, 'y':3}
 # }
 
+# Based off https://github.com/uofa-cmput404/cmput404-slides/blob/master/examples/ObserverExampleAJAX/server.py
 class World:
     def __init__(self):
         self.clear()
@@ -44,15 +45,31 @@ class World:
 
     def set(self, entity, data):
         self.space[entity] = data
+        self.notify_all(entity,data)
 
     def clear(self):
         self.space = dict()
+        self.listeners = dict()
+
 
     def get(self, entity):
         return self.space.get(entity,dict())
     
     def world(self):
         return self.space
+
+    def notify_all(self,entity,data):
+        for listener in self.listeners:
+           self.listeners[listener][entity] = data
+
+    def add_listener(self,listener_name):
+        self.listeners[listener_name] = dict()
+
+    def get_listener(self, listener_name):
+        return self.listeners[listener_name]
+
+    def clear_listener(self, listener_name):
+        self.listeners[listener_name] = dict()
 
 # you can test your webservice from the commandline
 # curl -v   -H "Content-Type: application/json" -X PUT http://127.0.0.1:5000/entity/X -d '{"x":1,"y":1}' 
@@ -80,8 +97,7 @@ def hello():
 @app.route("/entity/<entity>", methods=['POST','PUT'])
 def update(entity):
     response_dict = flask_post_json()
-    for key in response_dict.keys():
-        myWorld.update(entity, key, response_dict[key])
+    myWorld.set(entity, response_dict)
     return json.dumps(myWorld.get(entity))
 
 @app.route("/world", methods=['POST','GET'])    
@@ -98,6 +114,18 @@ def get_entity(entity):
 def clear():
     '''Clear the world out!'''
     return json.dumps(myWorld.clear())
+
+
+@app.route("/listener/<entity>", methods=['POST','PUT'])
+def add_listener(entity):
+    myWorld.add_listener( entity )
+    return flask.jsonify(dict())
+
+@app.route("/listener/<entity>")    
+def get_listener(entity):
+    v = myWorld.get_listener(entity)
+    myWorld.clear_listener(entity)
+    return flask.jsonify(v)
 
 if __name__ == "__main__":
     app.run()

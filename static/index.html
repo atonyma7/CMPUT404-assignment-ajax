@@ -30,7 +30,7 @@ var host = window.location.host;
 var context = canvas.getContext("2d");
 var W = canvas.width  = window.innerWidth-6;
 var H = canvas.height = window.innerHeight-50;
-
+var id = "L"+Math.floor(20000000*Math.random());
 
 function sendJSONXMLHTTPRequest(url, objects, callback) {
     var xhr = new XMLHttpRequest();
@@ -64,6 +64,22 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
 
 
 world = {};
+
+function register(id) {
+    sendJSONXMLHTTPRequest('/listener/' + id, {}, () => {})
+}
+
+register(id);
+
+function startWorld(){
+    sendJSONXMLHTTPRequest('/world', false, (newWorld) => {
+        world = newWorld
+    })
+
+}
+
+startWorld();
+drawFrame();
 
 //XXX: TODO Make this prettier!
 function drawCircle(context,entity) {
@@ -277,16 +293,19 @@ mouse.mousedraggers.push(function(x,y,clicked,e) {
 
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
-    drawFrame();
-    sendJSONXMLHTTPRequest('/world', false, (newWorld) => {
-        world = newWorld
+    //https://github.com/uofa-cmput404/cmput404-slides/blob/master/examples/ObserverExampleAJAX/static/observer.js
+    drawFrame()
+    sendJSONXMLHTTPRequest('/listener/' + id, false, (newWorld) => {
+        if (newWorld){
+            for (var key in newWorld) {
+                world[key] = newWorld[key];
+            }
+        }
     })
 }
 
 // 30 frames per second
 setInterval( update, 1000/30.0);
-
-
 
     </script>
 </body>
